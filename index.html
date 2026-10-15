@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Plan Ning</title>
+<link rel="icon" type="image/png" href="icon.png" />
+<link rel="apple-touch-icon" href="icons/icon-180.png" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#46577a" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Plan Ning" />
+<style>
+  :root{
+    --bg:#eef1f6; --card:#ffffff; --ink:#28313f; --muted:#7d8898;
+    --line:#e2e7ef; --accent:#5b6e91; --accent-deep:#46577a; --accent-soft:#eef1f8;
+    --sleep:#3d4a63; --focus:#5b6e91; --recover:#7d9b86; --rest:#8aa08c;
+    --commute:#8b98ad; --anchor:#a6b0c0; --danger:#c65f5f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.6}
+  button{font:inherit;cursor:pointer}
+  .muted{color:var(--muted);font-size:13px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  label{font-size:13px;color:var(--muted)}
+  input,select,textarea{font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+  input[type=number]{width:80px}
+  textarea{font-size:13px;width:100%;resize:vertical}
+
+  /* ---------- 左右结构 ---------- */
+  .app{display:flex;min-height:100vh}
+
+  /* 左侧边栏 */
+  .sidebar{width:230px;flex-shrink:0;background:linear-gradient(180deg,#46577a,#5b6e91);color:#fff;
+    padding:22px 14px 18px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh;overflow-y:auto}
+  .logo{font-size:20px;font-weight:800;letter-spacing:.5px;text-align:center}
+  .logo-img{width:56px;height:56px;border-radius:14px;display:block;margin:0 auto 6px}
+  .clockbox{text-align:center}
+  .clockbox .clock{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+  .clockbox .date{font-size:12px;opacity:.85;margin-top:2px}
+  .nav{display:flex;flex-direction:column;gap:4px}
+  .nav-item{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:none;border-radius:10px;
+    background:transparent;color:#e8edf5;font-size:14px;font-weight:600;text-align:left;transition:.15s}
+  .nav-item:hover{background:rgba(255,255,255,.12)}
+  .nav-item.active{background:#fff;color:var(--accent-deep)}
+  .nav-item span{font-size:18px}
+  .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px}
+  .nowhint-mini{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:9px 11px;font-size:12px;line-height:1.5}
+  .side-status{font-size:12px;color:#dfe6f1}
+
+  /* 右侧内容区 */
+  .content{flex:1.618 1 0;min-width:0;height:100vh;overflow-y:auto;padding:24px 26px 40px}
+
+  /* ---------- 切屏动画 ---------- */
+  .pane{display:none}
+  .pane.active{display:block;animation:paneIn .18s cubic-bezier(.22,.61,.36,1)}
+  .pane.leaving{display:block;animation:paneOut .12s ease forwards}
+  @keyframes paneIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  @keyframes paneOut{from{opacity:1}to{opacity:0}}
+
+  .pane-head{margin-bottom:14px}
+  .pane-head h2{margin:0;font-size:16px;color:var(--accent-deep);display:flex;align-items:center;gap:8px}
+  .pane-body{max-width:760px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+
+  /* ---------- 通用组件 ---------- */
+  .alertbanner{display:none;position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99;width:min(92vw,480px);
+    padding:12px 14px;border-radius:12px;background:#fdf0f0;border:1px solid #f3cfcf;color:#9f3a3a;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+  .alertbanner.show{display:block}
+  .btn{background:var(--accent);color:#fff;padding:9px 14px;border:none;border-radius:10px;font-weight:600}
+  .btn:hover{background:var(--accent-deep)}
+  .btn.ghost{background:var(--accent-soft);color:var(--accent-deep)}
+  .btn.ghost:hover{background:#e4e9f3}
+  .btn.ask{background:#f2f4f8;color:var(--accent-deep);font-size:12px;padding:6px 10px}
+  .btn.ask:hover{background:#e4e9f3}
+
+  /* timeline */
+  .tl{display:flex;flex-direction:column;gap:4px}
+  .tl-item{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:10px;border-left:3px solid var(--anchor);background:#fafbfd}
+  .tl-item .t{font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted);min-width:122px}
+  .tl-item .n{font-size:14px;font-weight:600}
+  .tl-item .tag{margin-left:auto;font-size:11px;color:var(--muted)}
+  .tl-item.now{background:var(--accent-soft);border-left-color:var(--accent-deep)}
+  .tl-item.now .now-badge{background:var(--accent-deep);color:#fff;font-size:11px;padding:2px 8px;border-radius:999px;font-weight:700}
+
+  /* sleep */
+  .sleepgrid{display:flex;flex-direction:column;gap:10px}
+  .big{font-size:15px}
+  .big b{font-size:24px;font-weight:800;color:var(--accent-deep)}
+  .bar{height:8px;border-radius:999px;background:#e6ebf2;overflow:hidden}
+  .bar>i{display:block;height:100%;background:var(--recover);border-radius:999px}
+
+  /* planner */
+  .task{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:#fafbfd}
+  .task .del{cursor:pointer;color:#b6bfcc;font-weight:700;padding:0 4px}
+  .task .del:hover{color:var(--danger)}
+  .hw-stuck{border:1px solid #e8e0c9;background:#fbfaf4}
+  .badge-stuck{color:#8a7a3f;font-size:11px;font-weight:700}
+  .plan{display:flex;flex-direction:column;gap:5px;margin-top:12px}
+  .plan-item{display:flex;gap:12px;align-items:baseline;padding:9px 12px;border-radius:10px;border-left:3px solid var(--focus);background:#fafbfd}
+  .plan-item .t{font-size:12px;color:var(--muted);min-width:122px;font-variant-numeric:tabular-nums}
+  .plan-item .b{font-size:13px;font-weight:600}
+  .plan-item .b small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+  .plan-item.recover{border-color:var(--recover)}
+  .plan-item.rest{border-color:var(--rest)}
+  .plan-item.sleep{border-color:var(--sleep);background:#f2f4f8}
+  .note{margin-top:12px;font-size:13px;padding:10px 12px;border-radius:10px}
+  .note.ok{background:#f0f6f2;color:#3f6f55}
+  .note.warn{background:#faf6ec;color:#8a7440}
+  .note.bad{background:#fdf0f0;color:#9f3a3a}
+
+  /* commute / bank / review */
+  .cmt{display:flex;flex-direction:column;gap:10px}
+  .cmt .c{padding:10px 12px;border-radius:10px;border:1px solid var(--line)}
+  .cmt .c h4{margin:0 0 2px;font-size:14px}
+  .cmt .c p{margin:0;font-size:13px;color:var(--muted)}
+  .ck.on{background:var(--accent);color:#fff}
+  .ask-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:#f6f4ea;border:1px solid #ece6d2;margin:4px 0;font-size:13px}
+  .week{width:100%;border-collapse:collapse;font-size:12px}
+  .week th,.week td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:center}
+  .week .ok{color:#4a7a5f;font-weight:700}
+  .week .no{color:#c9d0da}
+  .review label{display:block;margin-bottom:12px;font-size:13px;color:var(--muted)}
+  .review textarea{margin-top:4px}
+
+  /* AI 聊天框（右侧 1/4） */
+  .chat{flex:1 1 0;min-width:250px;max-width:500px;height:100vh;position:sticky;top:0;
+    display:flex;flex-direction:column;background:var(--card);border-left:1px solid var(--line)}
+  .chat-head{padding:13px 14px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+  .chat-head-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .chat-head .title{font-size:14px;font-weight:700;color:var(--accent-deep);display:flex;align-items:center;gap:6px}
+  .icon-btn{background:transparent;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:2px 7px;border-radius:8px;line-height:1}
+  .icon-btn:hover{background:var(--accent-soft);color:var(--accent-deep)}
+  .chat-head-actions{display:flex;gap:4px}
+  .profile-panel{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+  .chat-head select{width:100%}
+  .msg-actions{display:flex;gap:4px;margin-top:6px}
+  .msg-actions button{background:var(--accent-soft);border:none;border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer;color:var(--accent-deep)}
+  .msg-actions button.sel{background:var(--accent);color:#fff}
+  .chat-expand{display:none}
+  @media(min-width:901px){
+    .chat.collapsed{flex:0 0 46px;min-width:46px;max-width:46px}
+    .chat.collapsed .chat-head,
+    .chat.collapsed .quick,
+    .chat.collapsed .chat-msgs,
+    .chat.collapsed .chat-input{display:none}
+    .chat.collapsed .chat-expand{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;height:100%;
+      background:transparent;border:none;color:var(--accent-deep);font-size:20px;cursor:pointer;padding:16px 0}
+    .chat.collapsed .chat-expand span{font-size:13px}
+  }
+  .quick{padding:10px 12px 0;display:flex;gap:6px;flex-wrap:wrap}
+  .quick button{font-size:11px;padding:5px 9px;background:var(--accent-soft);color:var(--accent-deep);border:none;border-radius:999px;cursor:pointer}
+  .quick button:hover{background:#e4e9f3}
+  .chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .msg{max-width:88%;padding:9px 12px;border-radius:12px;font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+  .msg.user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+  .msg.ai{align-self:flex-start;background:var(--accent-soft);color:var(--ink);border-bottom-left-radius:4px}
+  .msg .mt{display:block;font-size:10px;opacity:.65;margin-top:4px}
+  .chat-input{padding:12px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:flex-end}
+  .chat-input textarea{flex:1;font-size:13px;min-height:38px;max-height:100px}
+  /* 手机版元素（桌面默认隐藏） */
+  .mobile-top{display:none}
+  .chat-fab{display:none}
+  .chat-close{display:none}
+
+  /* ---------- 手机版（≤900px） ---------- */
+  @media(max-width:900px){
+    .mobile-top{display:flex;align-items:center;gap:10px;padding:10px 14px;
+      background:linear-gradient(135deg,#5b6e91,#46577a);color:#fff;position:sticky;top:0;z-index:30}
+    .mt-logo{width:28px;height:28px;border-radius:8px;flex-shrink:0}
+    .mt-clock{font-variant-numeric:tabular-nums;font-weight:700;font-size:15px}
+    .mt-hint{flex:1;font-size:12px;background:rgba(255,255,255,.14);border-radius:10px;padding:6px 10px;
+      min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+    .sidebar{width:100%;height:auto;position:fixed;top:auto;bottom:0;left:0;right:0;padding:0;z-index:40;
+      background:linear-gradient(180deg,#5b6e91,#46577a)}
+    .sidebar .logo,.sidebar .clockbox,.sidebar .side-foot{display:none}
+    .sidebar .nav{flex-direction:row;justify-content:space-around;padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+    .nav-item{flex-direction:column;gap:2px;font-size:10px;padding:6px 4px;text-align:center}
+    .nav-item span{font-size:20px}
+
+    .content{height:auto;overflow:visible;padding:14px 14px 96px}
+
+    .chat{position:fixed;top:0;right:0;bottom:0;left:0;width:100%;max-width:none;height:100%;z-index:60;
+      display:none;border-left:none}
+    .chat.open{display:flex}
+    .chat-close{display:block}
+    #chatCollapse{display:none}
+
+    .chat-fab{display:flex;position:fixed;right:16px;bottom:calc(78px + env(safe-area-inset-bottom));
+      width:54px;height:54px;border-radius:50%;background:var(--accent);color:#fff;font-size:24px;
+      align-items:center;justify-content:center;border:none;box-shadow:0 6px 18px rgba(0,0,0,.25);z-index:55}
+  }
+</style>
+</head>
+<body>
+<div id="alertBanner" class="alertbanner"></div>
+
+<div class="mobile-top" id="mobileTop">
+  <img src="icon.png" class="mt-logo" alt="Plan Ning" />
+  <div class="mt-clock" id="clockM">--:--:--</div>
+  <div class="mt-hint" id="nowHintM">正在加载…</div>
+</div>
+<button class="chat-fab" id="chatFab" title="AI 学伴">🤖</button>
+
+<div class="app">
+  <!-- ===== 左侧边栏 ===== -->
+  <aside class="sidebar">
+    <div class="logo"><img src="icon.png" class="logo-img" alt="Plan Ning" /><div>Plan Ning</div></div>
+    <div class="clockbox">
+      <div class="clock" id="clock">--:--</div>
+      <div class="date" id="date"></div>
+    </div>
+    <nav class="nav">
+      <button class="nav-item active" data-go="pane-today"><span>📅</span>今日时间轴</button>
+      <button class="nav-item" data-go="pane-plan"><span>🌙</span>今晚计划</button>
+      <button class="nav-item" data-go="pane-sleep"><span>😴</span>睡眠守护</button>
+      <button class="nav-item" data-go="pane-review"><span>📝</span>睡前复盘</button>
+      <button class="nav-item" data-go="pane-commute"><span>🚌</span>通勤助手</button>
+      <button class="nav-item" data-go="pane-bank"><span>🏦</span>恢复银行</button>
+    </nav>
+    <div class="side-foot">
+      <div class="nowhint-mini" id="nowHint">正在加载…</div>
+      <div class="side-status" id="homeStatus"></div>
+    </div>
+  </aside>
+
+  <!-- ===== 右侧内容区 ===== -->
+  <main class="content" id="content">
+
+    <section class="pane active" id="pane-today">
+      <div class="pane-head"><h2>📅 今日时间轴</h2></div>
+      <div class="pane-body"><div class="card"><div class="tl" id="timeline"></div></div></div>
+    </section>
+
+    <section class="pane" id="pane-plan">
+      <div class="pane-head"><h2>🌙 今晚计划</h2></div>
+      <div class="pane-body">
+        <div class="card">
+          <div class="row" style="margin-bottom:12px">
+            <label>今天累吗？</label>
+            <select id="energy">
+              <option value="tired">很累</option>
+              <option value="normal" selected>一般</option>
+              <option value="energetic">还行</option>
+            </select>
+            <button class="btn" id="genBtn">生成今晚计划</button>
+          </div>
+          <div class="row" style="margin-bottom:8px">
+            <input id="hwSubject" placeholder="科目，如 数学" style="width:120px" />
+            <input id="hwMinutes" type="number" placeholder="分钟" min="5" step="5" style="width:76px" />
+            <select id="hwDiff"><option value="3">难</option><option value="2" selected>中</option><option value="1">易</option></select>
+            <input id="hwDue" placeholder="截止，如 明天" style="width:100px" />
+            <button class="btn ghost" id="addHw">＋ 添加</button>
+          </div>
+          <div class="muted" style="margin-bottom:8px">点「🙋不会」标记不会的题，会进到「睡前复盘」的明天问老师清单。</div>
+          <div id="hwList"></div>
+          <div class="plan" id="plan"></div>
+          <div id="planNote"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pane" id="pane-sleep">
+      <div class="pane-head"><h2>😴 睡眠守护</h2></div>
+      <div class="pane-body">
+        <div class="card">
+          <div class="sleepgrid">
+            <div class="row">
+              <label>起床</label>
+              <input type="time" id="wake" value="06:15" />
+              <label>目标睡眠(h)</label>
+              <input type="number" id="targetSleep" value="9" min="7" max="11" step="0.5" />
+            </div>
+            <div class="big">🌙 建议 <b id="bedtime">21:15</b> 熄灯 · 睡满 <b id="sleepHours">9.0</b> 小时</div>
+            <div class="muted">熄灯前 30 分钟进入缓冲带：<span id="winddown">20:45</span></div>
+            <div class="bar"><i id="sleepBar" style="width:0%"></i></div>
+            <div class="muted" id="sleepCountdown">距离熄灯还有 --</div>
+            <div class="row">
+              <button class="btn ghost" id="notifBtn">🔔 开启熄灯提醒</button>
+              <span class="muted" id="notifState"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pane" id="pane-review">
+      <div class="pane-head"><h2>📝 睡前复盘</h2></div>
+      <div class="pane-body">
+        <div class="card">
+          <div class="review">
+            <label>✅ 1. 今天懂了什么？<textarea id="r1" rows="1" placeholder="例：二次函数配方会了"></textarea></label>
+            <label>❓ 2. 哪里没懂？（→ 明天问老师 / 加练）<textarea id="r2" rows="1" placeholder="例：物理电路图不会画 → 明天问老师"></textarea></label>
+            <label>🎯 3. 明天第一优先级？<textarea id="r3" rows="1" placeholder="例：先交数学作业，再复习明天的小测"></textarea></label>
+          </div>
+          <div style="margin-top:4px">
+            <div class="muted" style="margin-bottom:4px">🙋 明天要问老师的：</div>
+            <div id="askList"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pane" id="pane-commute">
+      <div class="pane-head"><h2>🚌 通勤助手</h2></div>
+      <div class="pane-body">
+        <div class="card cmt">
+          <div class="c"><h4>🌅 早 · 校车去程</h4><p>轻复习 / 背单词 / 听播客（刚醒，低强度）</p></div>
+          <div class="c"><h4>🏫 到校后 · 课前</h4><p>对照今日清单 · 预习第一节课 · 找老师答疑</p></div>
+          <div class="c"><h4>🌆 晚 · 校车回程</h4><p>机械作业 / 整理笔记 / 或纯休息（累就「什么都不做」）</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pane" id="pane-bank">
+      <div class="pane-head"><h2>🏦 恢复银行</h2></div>
+      <div class="pane-body">
+        <div class="card">
+          <div class="row" id="checkins">
+            <button class="btn ghost ck" data-k="sleep">🌙 按时熄灯</button>
+            <button class="btn ghost ck" data-k="sport">🏃 运动/恢复</button>
+            <button class="btn ghost ck" data-k="review">📝 复盘完成</button>
+          </div>
+          <div class="muted" style="margin-top:8px">打卡只代表「做到了」，用于看一周的劳逸配比。</div>
+          <div id="weekReport" style="margin-top:10px"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===== AI 聊天框（右侧 1/4） ===== -->
+  <aside class="chat" id="chatPanel">
+    <div class="chat-head">
+      <div class="chat-head-row">
+        <div class="title">🤖 AI 学伴</div>
+        <div class="chat-head-actions">
+          <button class="icon-btn" id="profileBtn" title="关于我">🛠</button>
+          <button class="icon-btn" id="chatCollapse" title="收起">≫</button>
+          <button class="icon-btn chat-close" id="chatClose" title="关闭">✕</button>
+        </div>
+      </div>
+      <select id="chatSubject"></select>
+      <div class="profile-panel" id="profilePanel" hidden>
+        <div class="muted">关于我（AI 会记住）：弱科 / 易错点 / 喜欢的讲解方式 / 目标</div>
+        <textarea id="profileInput" rows="3" placeholder="例：数学偏弱；生物要用画图记；喜欢步骤化讲解；目标是跟上进度"></textarea>
+      </div>
+    </div>
+    <div class="quick">
+      <button data-q="复习">📋 复习步骤</button>
+      <button data-q="错题">❌ 讲错题</button>
+      <button data-q="知识点">💡 知识点</button>
+      <button data-q="排序">📅 作业排序</button>
+    </div>
+    <div class="chat-msgs" id="chatMsgs"></div>
+    <div class="chat-input">
+      <textarea id="chatInput" rows="1" placeholder="问 AI 学伴…"></textarea>
+      <button class="btn" id="chatSend">发送</button>
+    </div>
+    <button class="chat-expand" id="chatExpand" title="展开">🤖<span>≪</span></button>
+  </aside>
+</div>
+
+<script>
+(function(){
+  const $=s=>document.querySelector(s);
+  const min=(h,m)=>h*60+m;
+  const fmt=m=>{ m=((m%1440)+1440)%1440; const h=Math.floor(m/60), mm=m%60; return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0'); };
+  const P=x=>{ const [h,m]=x.split(':').map(Number); return min(h,m); };
+  const DIFF={1:'易',2:'中',3:'难'};
+  const dateKey=(d)=>{ const x=d||new Date(); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); };
+
+  /* ---------- 切屏（快速淡出淡入） ---------- */
+  const OUT_MS=120;
+  function show(id){
+    const cur=document.querySelector('.pane.active');
+    const next=document.getElementById(id);
+    if(!next || next===cur) return;
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.go===id));
+    if(cur){
+      cur.classList.add('leaving');
+      cur.classList.remove('active');
+      setTimeout(()=>{ cur.classList.remove('leaving'); cur.style.display='none'; }, OUT_MS);
+    }
+    setTimeout(()=>{
+      next.classList.add('active');
+      next.style.display='block';
+      const scroller=document.getElementById('content');
+      if(scroller) scroller.scrollTop=0;
+    }, cur ? OUT_MS : 0);
+  }
+  document.addEventListener('click',e=>{
+    const el=e.target.closest('[data-go]');
+    if(el) show(el.dataset.go);
+  });
+
+  /* ============================================================
+     📅 课表 —— 已按你的真实课表填入（改课改这里即可）
+     ============================================================ */
+  const SCHEDULE = {
+    wake:        '06:15',
+    busLeave:    '06:40',
+    schoolArrive:'07:30',
+    lunchStart:  '12:55',
+    lunchEnd:    '13:45',
+    busHome:     '17:00',
+    homeArrive:  '17:30',
+  };
+  const PERIODS = [
+    {s:'08:00', e:'08:45', name:'美术（选修）'},
+    {s:'08:50', e:'09:35', name:'历史'},
+    {s:'09:40', e:'10:25', name:'文学'},
+    {s:'10:30', e:'11:15', name:'中文'},
+    {s:'11:20', e:'12:05', name:'生物'},
+    {s:'12:10', e:'12:55', name:'语言'},
+    {s:'13:45', e:'14:15', name:'AE · 自习', type:'flex', hint:'做最难的作业 / 找老师答疑'},
+    {s:'14:20', e:'15:05', name:'数学'},
+    {s:'15:10', e:'16:00', name:'经济（选修）'},
+  ];
+  const CLASS_START = P(PERIODS[0].s);
+  const SCHOOL_END  = P(PERIODS[PERIODS.length-1].e);
+  const TAG={anchor:'📚 上课',commute:'🚌 通勤',recover:'🍃 恢复',flex:'⏳ 自主',sleep:'😴 睡眠'};
+
+  /* ---------- 周末模式 ---------- */
+  function isWeekend(){ const d=new Date().getDay(); return d===0 || d===6; }
+  function isSaturday(){ return new Date().getDay()===6; }
+  // 周六：7:30 早起 · 1h 运动 · 13:00–17:00 兴趣班 · 21:15 熄灯红线
+  const SAT={
+    wake:'07:30', readyEnd:'08:00',
+    sportStart:'08:00', sportEnd:'09:00', breakfastEnd:'09:30',
+    studyStart:'09:30', studyEnd:'12:00',
+    lunchEnd:'13:00',
+    classStart:'13:00', classEnd:'17:00', freeEnd:'18:00',
+    dinner:'18:00', dinnerEnd:'19:00', eveningEnd:'20:30', bed:'21:15',
+  };
+  // 周日：8:30–17:30 全天课（含午休，不用管）· 21:15 熄灯红线
+  const SUN={
+    wake:'07:30', readyEnd:'08:30',
+    classStart:'08:30', classEnd:'17:30',
+    homeEnd:'18:00', dinner:'18:00', dinnerEnd:'18:30',
+    eveningEnd:'20:00', bed:'21:15',
+  };
+  function getWeekend(){ return isSaturday() ? SAT : SUN; }
+
+  function buildWeekendBlocks(){
+    if(isSaturday()){
+      const W=SAT;
+      return [
+        {s:P(W.wake),        e:P(W.readyEnd),     type:'recover', name:'起床 · 洗漱（周六 7:30 早起）'},
+        {s:P(W.sportStart),  e:P(W.sportEnd),     type:'recover', name:'🏃 运动 1 小时'},
+        {s:P(W.sportEnd),    e:P(W.breakfastEnd), type:'anchor',  name:'早餐'},
+        {s:P(W.studyStart),  e:P(W.studyEnd),     type:'focus',   name:'上午 · 追赶学习（抓重点，别贪多）'},
+        {s:P(W.studyEnd),    e:P(W.lunchEnd),     type:'recover', name:'午餐 + 自由'},
+        {s:P(W.classStart),  e:P(W.classEnd),     type:'anchor',  name:'兴趣班'},
+        {s:P(W.classEnd),    e:P(W.freeEnd),      type:'recover', name:'回家 · 放空'},
+        {s:P(W.dinner),      e:P(W.dinnerEnd),    type:'anchor',  name:'晚餐'},
+        {s:P(W.dinnerEnd),   e:P(W.eveningEnd),   type:'focus',   name:'晚间轻松 · 轻复盘 / 休息'},
+        {s:P(W.eveningEnd),  e:P(W.bed),          type:'recover', name:'缓冲带 · 洗漱 + 放松'},
+        {s:P(W.bed),         e:P(W.wake),         type:'sleep',   name:'睡眠 · 红线 21:15'},
+      ];
+    }
+    const W=SUN;
+    return [
+      {s:P(W.wake),       e:P(W.readyEnd),   type:'recover', name:'起床 · 早餐 · 准备'},
+      {s:P(W.classStart), e:P(W.classEnd),   type:'anchor',  name:'全天课（含午休）'},
+      {s:P(W.classEnd),   e:P(W.homeEnd),    type:'commute', name:'回家'},
+      {s:P(W.homeEnd),    e:P(W.dinnerEnd),  type:'anchor',  name:'晚餐'},
+      {s:P(W.dinnerEnd),  e:P(W.eveningEnd), type:'focus',   name:'晚间 · 复盘 + 预习周一（轻）'},
+      {s:P(W.eveningEnd), e:P(W.bed),        type:'recover', name:'缓冲带 · 洗漱 + 放松'},
+      {s:P(W.bed),        e:P(W.wake),       type:'sleep',   name:'睡眠 · 红线 21:15'},
+    ];
+  }
+
+  function weekendHint(nowMin){
+    if(isSaturday()){
+      const W=SAT;
+      const rows=[
+        [P(W.wake),        P(W.readyEnd),     '周六早起！洗漱，准备开始一天'],
+        [P(W.sportStart),  P(W.sportEnd),     '🏃 运动 1 小时，出出汗'],
+        [P(W.sportEnd),    P(W.breakfastEnd), '早餐时间'],
+        [P(W.studyStart),  P(W.studyEnd),     '上午追赶学习：抓重点，别贪多'],
+        [P(W.studyEnd),    P(W.lunchEnd),     '午餐 + 自由'],
+        [P(W.classStart),  P(W.classEnd),     '兴趣班时间'],
+        [P(W.classEnd),    P(W.freeEnd),      '回家，放空一下'],
+        [P(W.dinner),      P(W.dinnerEnd),    '晚餐时间'],
+        [P(W.dinnerEnd),   P(W.eveningEnd),   '晚间轻松：轻复盘 / 休息'],
+        [P(W.eveningEnd),  P(W.bed),          '缓冲带：洗漱 + 放松'],
+        [P(W.bed),         1440,              '🌙 21:15 熄灯红线'],
+      ];
+      for(const r of rows){ if(nowMin>=r[0] && nowMin<r[1]) return r[2]; }
+      return '🌙 21:15 熄灯红线';
+    }
+    const W=SUN;
+    const rows=[
+      [P(W.wake),       P(W.readyEnd),   '起床 · 早餐 · 准备'],
+      [P(W.classStart), P(W.classEnd),   '全天课：标记不懂的点'],
+      [P(W.classEnd),   P(W.homeEnd),    '下课回家'],
+      [P(W.homeEnd),    P(W.dinnerEnd),  '晚餐时间'],
+      [P(W.dinnerEnd),  P(W.eveningEnd), '晚间轻松：复盘 + 预习周一'],
+      [P(W.eveningEnd), P(W.bed),        '缓冲带：洗漱 + 放松'],
+      [P(W.bed),        1440,            '🌙 21:15 熄灯红线'],
+    ];
+    for(const r of rows){ if(nowMin>=r[0] && nowMin<r[1]) return r[2]; }
+    return '🌙 21:15 熄灯红线';
+  }
+
+  function getSleep(){
+    const w=$('#wake').value; const [wh,wm]=w.split(':').map(Number);
+    const wake=min(wh,wm);
+    const target=parseFloat($('#targetSleep').value)||9;
+    let bed=wake-Math.round(target*60); bed=((bed%1440)+1440)%1440;
+    const wind=((bed-30)%1440+1440)%1440;
+    return {wake,target,bed,wind};
+  }
+
+  function buildDayBlocks(){
+    if(isWeekend()) return buildWeekendBlocks();
+    const s=getSleep();
+    const morning   = PERIODS.filter(p=>P(p.s) < P(SCHEDULE.lunchStart));
+    const afternoon = PERIODS.filter(p=>P(p.s) >= P(SCHEDULE.lunchEnd));
+    const blocks = [
+      {s:P(SCHEDULE.wake),         e:P(SCHEDULE.busLeave), type:'anchor',  name:'起床 · 晨间准备'},
+      {s:P(SCHEDULE.busLeave),     e:P(SCHEDULE.schoolArrive), type:'commute', name:'校车 · 去程'},
+      {s:P(SCHEDULE.schoolArrive), e:CLASS_START,          type:'commute', name:'到校 · 预习/答疑'},
+    ];
+    morning.forEach(p=>blocks.push({s:P(p.s), e:P(p.e), type:p.type||'anchor', name:p.name}));
+    blocks.push({s:P(SCHEDULE.lunchStart), e:P(SCHEDULE.lunchEnd), type:'recover', name:'午休 · 午餐'});
+    afternoon.forEach(p=>blocks.push({s:P(p.s), e:P(p.e), type:p.type||'anchor', name:p.name}));
+    blocks.push(
+      {s:SCHOOL_END,               e:P(SCHEDULE.busHome),  type:'commute', name:'校车 · 回程'},
+      {s:P(SCHEDULE.busHome),      e:P(SCHEDULE.homeArrive), type:'recover', name:'走路回家'},
+      {s:P(SCHEDULE.homeArrive),   e:s.bed,                type:'flex',    name:'晚间自主（生成后填充）'},
+      {s:s.bed,                    e:s.wake,               type:'sleep',   name:'睡眠 · '+s.target.toFixed(1)+'h'},
+    );
+    return blocks;
+  }
+
+  function renderTimeline(){
+    const now=new Date();
+    const nowMin=now.getHours()*60+now.getMinutes();
+    const blocks=buildDayBlocks();
+    $('#timeline').innerHTML=blocks.map(b=>{
+      const inNow = b.type==='sleep' ? (nowMin>=b.s) : (nowMin>=b.s && nowMin<b.e);
+      const timeStr = b.type==='sleep' ? (fmt(b.s)+' – 次日 '+fmt(b.e)) : (fmt(b.s)+' – '+fmt(b.e));
+      return `<div class="tl-item ${inNow?'now':''}" style="border-left-color:var(--${b.type})">
+        <span class="t">${timeStr}</span><span class="n">${b.name}</span>
+        <span class="tag">${TAG[b.type]||''}</span>
+        ${inNow?'<span class="now-badge">现在</span>':''}
+      </div>`;
+    }).join('');
+  }
+
+  function renderSleep(){
+    if(isWeekend()){
+      const W=getWeekend();
+      const bed=P(W.bed), wake=P(W.wake);
+      const hours=(wake+1440-bed)/60;
+      $('#bedtime').textContent=fmt(bed);
+      $('#sleepHours').textContent=hours.toFixed(1);
+      $('#winddown').textContent=fmt(bed-30);
+      $('#sleepCountdown').textContent=isSaturday() ? '🏃 周六早起：7:30 起床 · 1h 运动 · 下午兴趣班 · 21:15 熄灯' : '📚 周日：全天课 8:30–17:30 · 21:15 熄灯';
+      $('#sleepBar').style.width='60%';
+      return {diff: 0};
+    }
+    const s=getSleep();
+    $('#bedtime').textContent=fmt(s.bed);
+    $('#sleepHours').textContent=s.target.toFixed(1);
+    $('#winddown').textContent=fmt(s.wind);
+    const now=new Date(); const nowMin=now.getHours()*60+now.getMinutes();
+    let diff=s.bed-nowMin; if(diff<0) diff+=1440;
+    if(nowMin>=s.bed && nowMin<min(6,15)){ $('#sleepCountdown').textContent='已过熄灯时间，请尽快入睡'; }
+    else { const h=Math.floor(diff/60), m=diff%60; $('#sleepCountdown').textContent=`距离熄灯还有 ${h} 小时 ${m} 分钟`; }
+    const span=((s.bed-s.wake)%1440+1440)%1440;
+    const done=((nowMin-s.wake)%1440+1440)%1440;
+    const pct=Math.min(100,Math.max(0,Math.round(done/span*100)));
+    $('#sleepBar').style.width=pct+'%';
+    return {diff};
+  }
+
+  function renderNowHint(){
+    const nowMin=new Date().getHours()*60+new Date().getMinutes();
+    if(isWeekend()){ const t='此刻：'+weekendHint(nowMin); $('#nowHint').textContent=t; $('#nowHintM').textContent=t; return; }
+    const s=getSleep();
+    const wake=P(SCHEDULE.wake), busLeave=P(SCHEDULE.busLeave), arrive=P(SCHEDULE.schoolArrive);
+    const lunchS=P(SCHEDULE.lunchStart), lunchE=P(SCHEDULE.lunchEnd), home=P(SCHEDULE.homeArrive);
+    const periods=PERIODS.map(p=>({s:P(p.s), e:P(p.e), name:p.name, hint:p.hint}));
+    const cur=m=>periods.find(p=>m>=p.s && m<p.e);
+    const next=m=>periods.find(p=>p.s>=m);
+
+    let txt;
+    if(nowMin<wake) txt='夜间 · 该睡觉了，别熬夜';
+    else if(nowMin<busLeave) txt='晨间准备：洗漱、换衣、出门，别赖床';
+    else if(nowMin<arrive) txt='校车去程：轻复习 / 背单词 / 听播客';
+    else if(nowMin<CLASS_START) txt='到校准备：对照清单 · 预习第一节课 · 找老师答疑';
+    else if(nowMin<lunchS){ const c=cur(nowMin); txt=c ? (c.name+' · '+(c.hint||'标记不懂的点')) : ('课间 · 下一节 '+(next(nowMin)||{}).name); }
+    else if(nowMin<lunchE) txt='午休：吃饭 + 小睡 15–20 分钟，别刷手机';
+    else if(nowMin<SCHOOL_END){ const c=cur(nowMin); txt=c ? (c.name+' · '+(c.hint||'标记不懂的点')) : ('课间 · 下一节 '+(next(nowMin)||{}).name); }
+    else if(nowMin<P(SCHEDULE.busHome)) txt='校车回程：机械作业 / 整理笔记 / 或纯休息';
+    else if(nowMin<home) txt='走路回家：放空，听点喜欢的';
+    else if(nowMin<home+30) txt='🏠 到家了！先运动/放空 30 分钟，别瘫床刷手机';
+    else if(nowMin<home+60) txt='晚餐时间';
+    else if(nowMin<s.wind) txt='晚间专注：去「今晚计划」生成今天的安排';
+    else if(nowMin<s.bed) txt='缓冲带：复盘 + 洗漱 + 整理书包，收手机';
+    else txt='🌙 熄灯睡觉！保证 '+s.target.toFixed(1)+' 小时睡眠';
+
+    const label='此刻：'+txt;
+    $('#nowHint').textContent=label;
+    $('#nowHintM').textContent=label;
+  }
+
+  function renderHomeStatus(){
+    if(isWeekend()){ $('#homeStatus').textContent=isSaturday() ? '🏃 周六 · 7:30 早起 · 上午自由 · 下午兴趣班' : '📚 周日 · 全天课 8:30–17:30 · 21:15 熄灯'; return; }
+    const s=getSleep();
+    const all=getCK(); const today=all[dateKey()]||{};
+    const done=(today.sleep?1:0)+(today.sport?1:0)+(today.review?1:0);
+    $('#homeStatus').textContent=`🛏️ 今晚 ${fmt(s.bed)} 熄灯 · ✅ 今日恢复打卡 ${done}/3`;
+  }
+
+  /* ---------- 熄灯提醒 ---------- */
+  let notifOn = localStorage.getItem('pn_notif')==='1';
+  let prevDiff = null;
+  function fireAlert(msg){
+    const el=$('#alertBanner');
+    el.innerHTML='⏰ '+msg;
+    el.classList.add('show');
+    clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'), 8000);
+  }
+  function renderNotifBtn(){
+    $('#notifBtn').textContent = notifOn ? '🔕 关闭熄灯提醒' : '🔔 开启熄灯提醒';
+    $('#notifBtn').classList.toggle('btn', notifOn);
+    $('#notifBtn').classList.toggle('ghost', !notifOn);
+    const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+    $('#notifState').textContent = !notifOn ? '未开启'
+      : (perm==='granted' ? '熄灯前 60/30/15 分钟提醒'
+      : (perm==='denied' ? '通知权限被拒 · 仅站内提醒' : '站内提醒已开'));
+  }
+  function checkNotif(diff){
+    if(prevDiff!==null && notifOn){
+      for(const t of [60,30,15,0]){
+        if(prevDiff>t && diff<=t){
+          const msg = t===0 ? '熄灯时间到了，现在睡觉！' : `距离熄灯还有 ${t} 分钟，准备收尾`;
+          fireAlert(msg);
+          if('Notification' in window && Notification.permission==='granted'){ try{ new Notification('Plan Ning',{body:msg}); }catch(e){} }
+          break;
+        }
+      }
+    }
+    prevDiff=diff;
+    $('#sleepCountdown').style.color = (diff<=30 && notifOn) ? '#c65f5f' : '';
+  }
+
+  /* ---------- 作业列表 ---------- */
+  const LS='pn_homework_v1';
+  let homework=loadHw();
+  function loadHw(){
+    try{ const v=JSON.parse(localStorage.getItem(LS)); if(Array.isArray(v)&&v.length) return v; }catch(e){}
+    return [
+      {subject:'数学', minutes:40, diff:3, due:'明天'},
+      {subject:'英语阅读', minutes:30, diff:2, due:'明天'},
+      {subject:'科学复习', minutes:25, diff:2, due:'后天'},
+    ];
+  }
+  function saveHw(){ localStorage.setItem(LS, JSON.stringify(homework)); renderHw(); }
+  function renderAskList(){
+    const stuck=homework.filter(t=>t.stuck);
+    $('#askList').innerHTML = stuck.length
+      ? stuck.map(t=>`<div class="ask-item">🙋 <b>${t.subject}</b>：${t.due?('截止 '+t.due+' · '):''}明天带去问老师 / 加练</div>`).join('')
+      : '<div class="muted">还没有标记。把不会的题点成「🙋不会」。</div>';
+  }
+  function renderHw(){
+    const el=$('#hwList');
+    if(!homework.length){ el.innerHTML='<div class="muted">还没有作业，点「＋ 添加」或直接生成。</div>'; renderAskList(); return; }
+    el.innerHTML=homework.map((t,i)=>`<div class="task ${t.stuck?'hw-stuck':''}">
+      <span><b>${t.subject}</b> · ${t.minutes} 分钟 · ${DIFF[t.diff]||'中'} · 截止${t.due||'—'}${t.stuck?' <span class="badge-stuck">🙋不会</span>':''}</span>
+      <span style="margin-left:auto"></span>
+      <button class="btn ask" data-i="${i}">${t.stuck?'已标记':'🙋不会'}</button>
+      <span class="del" data-i="${i}" title="删除">✕</span>
+    </div>`).join('');
+    el.querySelectorAll('.btn.ask').forEach(b=>b.onclick=()=>{ homework[+b.dataset.i].stuck=!homework[+b.dataset.i].stuck; saveHw(); });
+    el.querySelectorAll('.del').forEach(d=>d.onclick=()=>{ homework.splice(+d.dataset.i,1); saveHw(); });
+    renderAskList();
+  }
+  $('#addHw').onclick=()=>{
+    const subject=$('#hwSubject').value.trim()||'未命名';
+    const minutes=Math.max(5, parseInt($('#hwMinutes').value)||30);
+    const diff=parseInt($('#hwDiff').value)||2;
+    const due=$('#hwDue').value.trim()||'明天';
+    homework.push({subject,minutes,diff,due});
+    saveHw(); $('#hwSubject').value=''; $('#hwMinutes').value=''; $('#hwDue').value='';
+  };
+
+  /* ---------- 今晚计划生成 ---------- */
+  function generatePlan(){
+    const s=getSleep();
+    const energy=$('#energy').value;
+    const weekend=isWeekend();
+    const W = weekend ? getWeekend() : null;
+    const bed   = weekend ? P(W.bed) : s.bed;
+    const wind  = weekend ? P(W.bed)-30 : s.wind;
+    const home  = weekend ? P(W.dinner) : P(SCHEDULE.homeArrive);
+    const dinnerEnd = weekend ? P(W.dinnerEnd) : home+60;
+    const studyEnd  = wind;
+    const workLen=40, breakLen=10;
+    const maxBlocks = energy==='tired'?2 : energy==='normal'?3 : 3;
+
+    const order={明天:0,今日:0,后天:1,周末:2};
+    const tasks=[...homework].map(t=>({...t, remaining:t.minutes}))
+      .sort((a,b)=> b.diff-a.diff || (order[a.due]??3)-(order[b.due]??3));
+
+    let blocks=[]; let cur=null;
+    const startNew=()=>{ cur={tasks:[],used:0}; };
+    startNew();
+    for(const t of tasks){
+      while(t.remaining>0){
+        const cap=workLen-cur.used;
+        if(cap<=0){ blocks.push(cur); startNew(); continue; }
+        const take=Math.min(cap,t.remaining);
+        cur.tasks.push({label:`${t.subject}（${DIFF[t.diff]||'中'}）`, take});
+        cur.used+=take; t.remaining-=take;
+      }
+    }
+    if(cur.tasks.length) blocks.push(cur);
+
+    const tonight=blocks.slice(0,maxBlocks);
+    const deferred=blocks.slice(maxBlocks);
+
+    const studyItems=[];
+    let cursor=dinnerEnd, overRun=false, focusNo=0;
+    for(let i=0;i<tonight.length;i++){
+      const b=tonight[i];
+      if(cursor+b.used>studyEnd){ deferred.push(...tonight.slice(i)); overRun=true; break; }
+      focusNo++;
+      studyItems.push({s:cursor,e:cursor+b.used,type:'focus',name:`专注块 ${focusNo}`,detail:b.tasks.map(x=>x.label+' · '+x.take+'分').join(' / ')});
+      cursor+=b.used;
+      if(i<tonight.length-1 && cursor+breakLen<=studyEnd){
+        studyItems.push({s:cursor,e:cursor+breakLen,type:'rest',name:'休息',detail:'真休息：走动 / 喝水 / 远眺'});
+        cursor+=breakLen;
+      }
+    }
+
+    const plan=[];
+    if(weekend){
+      plan.push({s:P(W.dinner), e:P(W.dinnerEnd), type:'anchor', name:'晚餐', detail:''});
+      studyItems.forEach(it=>plan.push(it));
+      plan.push({s:wind, e:bed, type:'recover', name:'缓冲带 · 洗漱 + 放松', detail:'周末也别熬太晚'});
+      plan.push({s:bed, e:P(W.wake), type:'sleep', name:'熄灯睡眠 · 补觉', detail:'约 '+(P(W.wake)+1440-bed)/60+' 小时'});
+    } else {
+      plan.push({s:home, e:home+30, type:'recover', name:'恢复 · 运动/放空', detail:'回家先放电 30 分钟，别瘫床刷手机'});
+      plan.push({s:home+30, e:dinnerEnd, type:'anchor', name:'晚餐', detail:''});
+      studyItems.forEach(it=>plan.push(it));
+      plan.push({s:wind, e:bed, type:'recover', name:'缓冲带 · 复盘 + 洗漱', detail:'只做低刺激活动'});
+      plan.push({s:bed, e:s.wake, type:'sleep', name:'熄灯睡眠', detail:'睡 '+s.target.toFixed(1)+' 小时'});
+    }
+
+    const PE={focus:'📖 ',rest:'☕ ',recover:'🍃 ',anchor:'🍽️ ',sleep:'🌙 '};
+    $('#plan').innerHTML=plan.map(p=>{
+      const timeStr=(p.type==='sleep') ? (fmt(p.s)+' – 次日 '+fmt(p.e)) : (fmt(p.s)+' – '+fmt(p.e));
+      return `<div class="plan-item ${p.type}">
+        <span class="t">${timeStr}</span>
+        <span class="b">${(PE[p.type]||'')+p.name}${p.detail?'<small>'+p.detail+'</small>':''}</span>
+      </div>`;
+    }).join('');
+
+    const totalAssigned=homework.reduce((a,t)=>a+t.minutes,0);
+    const deferredMins=deferred.reduce((a,b)=>a+b.used,0);
+    let note='';
+    if(overRun){
+      note=`<div class="note bad">任务过多，缓冲带（${fmt(wind)}）前放不下，已把 ${deferredMins} 分钟任务顺延，睡眠不受影响。</div>`;
+    } else if(deferredMins){
+      const d=deferred.map(b=>b.tasks.map(x=>x.label).join('+')).join('、');
+      note=`<div class="note warn">${deferredMins} 分钟任务顺延：「${d}」。优先保证睡眠。</div>`;
+    } else {
+      note=`<div class="note ok">${weekend?'周末计划':'今晚计划'}已生成，全部 ${totalAssigned} 分钟任务在 ${fmt(wind)} 前完成，未越过熄灯线 ${fmt(bed)}。</div>`;
+    }
+    $('#planNote').innerHTML=note;
+  }
+  $('#genBtn').onclick=generatePlan;
+
+  /* ---------- 恢复银行 ---------- */
+  const CK_KEY='pn_checkins';
+  function getCK(){ try{ return JSON.parse(localStorage.getItem(CK_KEY))||{}; }catch(e){ return {}; } }
+  function setCK(v){ localStorage.setItem(CK_KEY, JSON.stringify(v)); }
+  function renderWeek(all){
+    const rows=[];
+    for(let i=6;i>=0;i--){
+      const d=new Date(); d.setDate(d.getDate()-i);
+      const k=dateKey(d); const v=all[k]||{};
+      const done=(v.sleep?1:0)+(v.sport?1:0)+(v.review?1:0);
+      const label=(i===0?'今天':['周日','周一','周二','周三','周四','周五','周六'][d.getDay()]);
+      rows.push(`<tr><td>${label}</td>
+        <td class="${v.sleep?'ok':'no'}">${v.sleep?'✓':'○'}</td>
+        <td class="${v.sport?'ok':'no'}">${v.sport?'✓':'○'}</td>
+        <td class="${v.review?'ok':'no'}">${v.review?'✓':'○'}</td>
+        <td class="${done>=2?'ok':'no'}">${done}/3</td></tr>`);
+    }
+    let total=0, done=0;
+    for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); const v=all[dateKey(d)]||{}; total+=3; done+=(v.sleep?1:0)+(v.sport?1:0)+(v.review?1:0); }
+    const pct=Math.round(done/total*100);
+    const note = done===0 ? '<div class="muted">本周还没有打卡记录，从今天开始记吧。</div>'
+      : (done/total<0.7 ? '<div class="muted" style="color:#8a7440">恢复偏低，先补休息再谈进度。</div>'
+      : (done/total>=0.85 ? '<div class="muted" style="color:#3f6f55">恢复良好，劳逸平衡。</div>' : ''));
+    $('#weekReport').innerHTML=`<table class="week"><thead><tr><th>日期</th><th>睡眠</th><th>运动</th><th>复盘</th><th>达标</th></tr></thead><tbody>${rows.join('')}</tbody></table>
+      <div class="row" style="margin-top:8px"><span class="muted">本周恢复达标率</span><div class="bar" style="flex:1;min-width:120px"><i style="width:${pct}%"></i></div><span class="muted">${pct}%</span></div>${note}`;
+  }
+  function renderCheckins(){
+    const all=getCK(); const k=dateKey(); const today=all[k]||{};
+    document.querySelectorAll('.ck').forEach(b=>b.classList.toggle('on', !!today[b.dataset.k]));
+    renderWeek(all);
+  }
+  document.querySelectorAll('.ck').forEach(b=>b.onclick=()=>{
+    const all=getCK(); const k=dateKey(); const v=all[k]||{};
+    v[b.dataset.k]=!v[b.dataset.k];
+    all[k]=v; setCK(all); renderCheckins(); renderHomeStatus();
+  });
+  $('#notifBtn').onclick=async ()=>{
+    notifOn=!notifOn;
+    localStorage.setItem('pn_notif', notifOn?'1':'0');
+    if(notifOn && 'Notification' in window && Notification.permission==='default'){
+      try{ await Notification.requestPermission(); }catch(e){}
+    }
+    renderNotifBtn();
+  };
+
+  /* ---------- 复盘持久化 ---------- */
+  ['r1','r2','r3'].forEach(id=>{
+    $('#'+id).value=localStorage.getItem('pn_'+id)||'';
+    $('#'+id).addEventListener('input',()=>localStorage.setItem('pn_'+id,$('#'+id).value));
+  });
+
+  /* ============================================================
+     🤖 AI 学伴（当前为模拟回复；接入真实 API 时替换 mockReply）
+     ============================================================ */
+  const AI_SYSTEM_PROMPT = [
+    '你是 Plan Ning 的 AI 学习助手，服务一名深圳国际学校 G9 学生，像同学/学长一样陪伴。中文回答，简洁、具体、可执行，不说空话。',
+    '',
+    '【作息 · 工作日】06:15 起床 → 06:40 校车 → 07:30 到校 → 08:00 上课；午休 12:55–13:45；16:00 放学 → 17:30 到家；晚间自主 17:30–21:15（核心专注 18:30–20:45）。',
+    '【作息 · 周六】07:30 起床 → 08:00–09:00 运动 1 小时 → 上午自由/追赶学习 → 13:00–17:00 兴趣班 → 晚上轻松。',
+    '【作息 · 周日】07:30 起床 → 08:30–17:30 全天课（含午休）→ 晚上轻松。',
+    '【硬红线】21:15 熄灯，睡约 9–10 小时；任何晚间计划不得越过 21:15。',
+    '【课表】历史 08:50–09:35、文学 09:40–10:25、生物 11:20–12:05、语言 12:10–12:55、数学 14:20–15:05、经济 15:10–16:00。',
+    '【学习原则】先难后易；先做明天要交的；通勤/午休做轻任务（背单词、回忆）；不懂就标「🙋」第二天问老师，不积压；用主动回忆/间隔重复代替反复抄写。',
+    '【态度】工作日保持严格节奏，周末可以懒散放松、以恢复为主。',
+    '【回答格式】给步骤时写「第几步 + 做什么 + 大约几分钟」。',
+    '下面【关于我】和【当前上下文】会随每次对话注入，优先尊重里面的信息。'
+  ].join('\n');
+
+  const PROFILE_KEY='pn_profile';
+  const DEFAULT_PROFILE='数学偏弱；生物要用画图记；喜欢步骤化、给例子的讲解；目标是跟上进度、休息够。';
+  function getProfile(){ return localStorage.getItem(PROFILE_KEY) || DEFAULT_PROFILE; }
+  function setProfile(v){ localStorage.setItem(PROFILE_KEY, v); }
+
+  let stylePref = localStorage.getItem('pn_style')||'balanced';
+  function applyStyle(text){
+    if(stylePref==='concise') return text.split('\n')[0];
+    if(stylePref==='detailed') return text+'\n\n（想更深入某一步，可以直接追问我）';
+    return text;
+  }
+
+  function buildContext(subject){
+    const n=new Date();
+    const day=['周日','周一','周二','周三','周四','周五','周六'][n.getDay()];
+    const now=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');
+    const energyLabel={tired:'很累',normal:'一般',energetic:'还行'}[$('#energy').value]||'一般';
+    const hw=homework.length ? homework.map(h=>h.subject+'('+DIFF[h.diff]+','+h.minutes+'分,截止'+h.due+')').join('、') : '无';
+    const s=getSleep();
+    const bed = isWeekend() ? fmt(P(getWeekend().bed)) : fmt(s.bed);
+    return `今天${day} ${now}，${isWeekend()?'周末':'工作日'}；精力：${energyLabel}；当前科目：${subject}；今晚作业：${hw}；熄灯红线：${bed}。`;
+  }
+
+  const CHAT_SUBJECTS=['历史','文学','生物','语言','数学','经济'];
+  const SUBJECT_TIPS={
+    '历史':'先理时间线，再记事件因果，别死背年代',
+    '文学':'抓人物、主题、手法，结合作者背景',
+    '生物':'画图记结构/过程，联系生活例子',
+    '语言':'每天积累词汇和句型，多说多读',
+    '数学':'先懂概念再刷题，错题反复重做',
+    '经济':'用案例理解概念，画供需图帮助记忆',
+  };
+
+  function getChat(sub){ try{ return JSON.parse(localStorage.getItem('pn_chat_'+sub))||[]; }catch(e){ return []; } }
+  function setChat(sub, arr){ localStorage.setItem('pn_chat_'+sub, JSON.stringify(arr)); }
+  function chatNow(){ const n=new Date(); return String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0'); }
+  function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function addMsg(role, text, subject){
+    const arr=getChat(subject);
+    arr.push({role, text, time: chatNow()});
+    setChat(subject, arr);
+    const box=$('#chatMsgs');
+    const actions = role==='ai'
+      ? `<div class="msg-actions"><button data-a="like" title="有用">👍</button><button data-a="dislike" title="没用">👎</button><button data-a="more" title="更详细">＋</button><button data-a="less" title="更简洁">－</button></div>`
+      : '';
+    box.insertAdjacentHTML('beforeend', `<div class="msg ${role}">${escapeHtml(text)}<span class="mt">${chatNow()}</span>${actions}</div>`);
+    box.scrollTop=box.scrollHeight;
+  }
+  function renderChat(){
+    const sub=$('#chatSubject').value;
+    const arr=getChat(sub);
+    const box=$('#chatMsgs');
+    if(!arr.length){
+      box.innerHTML='<div class="msg ai">我是 AI 学伴 🤖 已经根据你的作息训练过。<br><br>'+escapeHtml(buildContext(sub))+'<br><br>你可以问我：<br>· 📋 复习步骤<br>· ❌ 讲错题<br>· 💡 知识点<br>· 📅 作业排序</div>';
+      return;
+    }
+    box.innerHTML=arr.map(m=>`<div class="msg ${m.role}">${escapeHtml(m.text)}<span class="mt">${m.time}</span></div>`).join('');
+    box.scrollTop=box.scrollHeight;
+  }
+
+  function studyPlan(subject){
+    const s=getSleep();
+    return `${subject} 晚间复习建议（${fmt(min(18,30))}–${fmt(s.wind)}，${fmt(s.bed)} 前熄灯）：\n1️⃣ 10 分钟回顾大致内容：翻笔记/课本目录，回忆今天讲了什么，把不懂的标出来。\n2️⃣ 20 分钟精攻难点：针对不懂点看例题、重做一遍。\n3️⃣ 15 分钟做题巩固：做 3–5 道练习，错题顺手标「🙋不会」。\n4️⃣ 5 分钟收尾：把收获/疑问写进「睡前复盘」。\n\n💡 ${subject}记忆重点：${SUBJECT_TIPS[subject]||''}`;
+  }
+
+  function mockReply(subject, text){
+    const t=text.replace(/\s+/g,'');
+    if(/作业|排序|先做|任务/.test(t)){
+      const hw=homework.slice().sort((a,b)=>b.diff-a.diff);
+      if(!hw.length) return '现在还没录入作业。先去「今晚计划」把作业加进来，我就能帮你按「先难后易」排序。';
+      return '建议按「先难后易 + 截止近的先做」：\n'+hw.map((h,i)=>`${i+1}. ${h.subject}（${DIFF[h.diff]}，${h.minutes}分钟，截止${h.due}）`).join('\n')+'\n\n最烧脑的放 18:30 精力最好时开始，机械/简单的放后面或通勤时间。';
+    }
+    if(/复习|计划|步骤|怎么学|怎么复习|安排|预习/.test(t)) return studyPlan(subject);
+    if(/错题|不会|讲|这题|怎么做/.test(t)) return `把题目发给我，我按 4 步讲：\n1️⃣ 判断考点（${subject}的哪个知识点）\n2️⃣ 拆解已知条件\n3️⃣ 一步步推导，不跳步\n4️⃣ 总结同类题的套路\n\n先告诉我：你是「完全没思路」还是「算到一半卡住」？`;
+    if(/知识点|什么是|为什么|概念|区别|公式/.test(t)) return `关于「${text.slice(0,18)}」，建议这样记（${subject}）：\n- 一句话说清它是什么\n- 用例子/类比加深记忆\n- 做 1–2 道题验证\n\n具体想让我讲哪个知识点？我展开。`;
+    return `收到～ 关于「${subject}」，你可以问我：\n· 📋 今晚${subject}复习步骤\n· ❌ 这道${subject}题不会\n· 💡 ${subject}某个知识点\n· 📅 帮我把作业排个序\n\n你想从哪个开始？`;
+  }
+
+  function sendChat(){
+    const sub=$('#chatSubject').value;
+    const inp=$('#chatInput');
+    const text=inp.value.trim();
+    if(!text) return;
+    inp.value='';
+    addMsg('user', text, sub);
+    const box=$('#chatMsgs');
+    const typing=document.createElement('div');
+    typing.className='msg ai'; typing.textContent='…';
+    box.appendChild(typing); box.scrollTop=box.scrollHeight;
+    setTimeout(()=>{ typing.remove(); addMsg('ai', applyStyle(mockReply(sub, text)), sub); }, 450);
+  }
+
+  $('#chatSend').onclick=sendChat;
+  $('#chatInput').addEventListener('keydown',e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); } });
+  $('#chatSubject').addEventListener('change', renderChat);
+  document.querySelectorAll('.quick button').forEach(b=>b.onclick=()=>{
+    const pre={ '复习':'帮我规划今晚的复习步骤','错题':'我有一道题不会做','知识点':'给我讲讲这个知识点','排序':'帮我把今晚作业排个序' }[b.dataset.q];
+    if(pre){ $('#chatInput').value=pre; $('#chatInput').focus(); }
+  });
+  $('#chatSubject').innerHTML=CHAT_SUBJECTS.map(s=>`<option value="${s}">${s}</option>`).join('');
+
+  // 反馈：AI 学伴越用越懂你
+  $('#chatMsgs').addEventListener('click', e=>{
+    const b=e.target.closest('[data-a]');
+    if(!b) return;
+    const a=b.dataset.a;
+    if(a==='more'){ stylePref='detailed'; localStorage.setItem('pn_style','detailed'); }
+    else if(a==='less'){ stylePref='concise'; localStorage.setItem('pn_style','concise'); }
+    b.closest('.msg-actions').querySelectorAll('button').forEach(x=>x.classList.remove('sel'));
+    b.classList.add('sel');
+  });
+
+  // 关于我（AI 会记住）
+  $('#profileBtn').onclick=()=>{ const p=$('#profilePanel'); p.hidden=!p.hidden; };
+  $('#profileInput').value=getProfile();
+  $('#profileInput').addEventListener('input',()=>setProfile($('#profileInput').value));
+
+  // 收起 / 展开 AI 学伴
+  const chatPanel=$('#chatPanel');
+  $('#chatCollapse').onclick=()=>{ chatPanel.classList.add('collapsed'); localStorage.setItem('pn_chat_collapsed','1'); };
+  $('#chatExpand').onclick=()=>{ chatPanel.classList.remove('collapsed'); localStorage.setItem('pn_chat_collapsed','0'); };
+  $('#chatFab').onclick=()=>{ chatPanel.classList.add('open'); };
+  $('#chatClose').onclick=()=>{ chatPanel.classList.remove('open'); };
+  if(localStorage.getItem('pn_chat_collapsed')==='1') chatPanel.classList.add('collapsed');
+
+  /* ---------- 初始化与刷新 ---------- */
+  function tick(){
+    const n=new Date();
+    const hm=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');
+    $('#clock').textContent=hm;
+    $('#clockM').textContent=hm;
+    const wd=['周日','周一','周二','周三','周四','周五','周六'][n.getDay()];
+    $('#date').textContent=(n.getMonth()+1)+'月'+n.getDate()+'日 · '+wd;
+    renderTimeline();
+    const {diff}=renderSleep();
+    renderNowHint();
+    renderHomeStatus();
+    checkNotif(diff);
+  }
+  $('#wake').addEventListener('input',()=>{ renderSleep(); renderTimeline(); renderHomeStatus(); if($('#plan').innerHTML) generatePlan(); });
+  $('#targetSleep').addEventListener('input',()=>{ renderSleep(); renderTimeline(); renderHomeStatus(); if($('#plan').innerHTML) generatePlan(); });
+  $('#energy').addEventListener('change',()=>{ if($('#plan').innerHTML) generatePlan(); });
+
+  renderHw();
+  renderNotifBtn();
+  renderCheckins();
+  renderChat();
+  tick();
+  generatePlan();
+  setInterval(tick,1000);
+})();
+</script>
+<script>
+if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
+  window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+}
+</script>
+</body>
+</html>
